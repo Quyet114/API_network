@@ -3,7 +3,18 @@ const bcrypt = require("bcrypt");
 const authController = require("./authController");
 const mongoose = require('mongoose');
 const userController = {
-
+    getUserByToken: async (req, res, next) => {
+        const currentUserId = req.user.id;
+        try {
+            const user = await User.findById(currentUserId).select('-password'); // Không trả về password
+            if (!user) {
+                return res.status(404).json({ message: 'User not found.' });
+            }
+            res.status(200).json(user);
+        } catch (error) {
+            res.status(500).json({ message: 'There was a problem finding the user.' });
+        }
+    },
     // Tìm kiếm user theo xxx
     findUserBy: async (req, res, next) => {
 
@@ -134,11 +145,42 @@ const userController = {
             return res.status(500).json({ message: 'Server error', error });
         }
     },
-    // Hủy yêu cầu kết bạn
+    // Từ chối yêu cầu kết bạn
     cancelFriendRequest: async (req, res) => {
         const userId = req.params.userId;
         const currentUserId = req.user.id;
 
+        try {
+            const user = await User.findById(currentUserId);
+            if (!user) {
+                return res.status(404).json({ message: 'User not found' });
+            }
+
+            // Tìm và xóa yêu cầu kết bạn
+            const friendIndex = user.friends.findIndex(friend => friend.friendId.equals(userId) && friend.status === 'requested');
+            if (friendIndex === -1) {
+                return res.status(400).json({ message: 'Friend request not found' });
+            }
+            user.friends.splice(friendIndex, 1);
+            await user.save();
+
+            // Xóa yêu cầu từ người dùng nhận yêu cầu
+            const recipient = await User.findById(userId);
+            const recipientIndex = recipient.friends.findIndex(friend => friend.friendId.equals(currentUserId));
+            if (recipientIndex !== -1) {
+                recipient.friends.splice(recipientIndex, 1);
+                await recipient.save();
+            }
+
+            return res.status(200).json({ message: 'Friend request cancelled' });
+        } catch (error) {
+            return res.status(500).json({ message: 'Server error', error });
+        }
+    },
+    // Từ chối yêu cầu kết bạn
+    cancelWaitAccept: async (req, res) => {
+        const userId = req.params.userId;
+        const currentUserId = req.user.id;
         try {
             const user = await User.findById(currentUserId);
             if (!user) {
@@ -154,14 +196,13 @@ const userController = {
             user.friends.splice(friendIndex, 1);
             await user.save();
 
-            // Xóa yêu cầu từ người dùng nhận yêu cầu
+            // Xóa yêu cầu từ người dùng gửi yêu cầu
             const recipient = await User.findById(userId);
             const recipientIndex = recipient.friends.findIndex(friend => friend.friendId.equals(currentUserId));
             if (recipientIndex !== -1) {
                 recipient.friends.splice(recipientIndex, 1);
                 await recipient.save();
             }
-
             return res.status(200).json({ message: 'Friend request cancelled' });
         } catch (error) {
             return res.status(500).json({ message: 'Server error', error });
@@ -203,8 +244,21 @@ const userController = {
 
             // Lọc danh sách yêu cầu kết bạn có trạng thái là 'requested'
             const requestedFriends = user.friends.filter(friend => friend.status === 'requested');
-
-            return res.status(200).json({ requestedFriends });
+            const friendIds = requestedFriends.map(friend => friend.friendId);
+            let reqFriends = [];
+            for (friendId of friendIds) {
+                const reqFriend = await User.findById(friendId);
+                if (!reqFriend) {
+                    continue;
+                }
+                const body = {
+                    idReq: reqFriend._id,
+                    name: reqFriend.name,
+                    avatar: reqFriend.avatar,
+                }
+                reqFriends.push(body);
+            }
+            return res.status(200).json({ reqFriends });
         } catch (error) {
             return res.status(500).json({ message: 'Server error', error });
         }
@@ -219,8 +273,23 @@ const userController = {
 
             // Lọc danh sách yêu cầu kết bạn có trạng thái là 'requested'
             const requestedFriends = user.friends.filter(friend => friend.status === 'waitAccept');
+            // Lấy danh sách id của các req
+            const friendIds = requestedFriends.map(friend => friend.friendId);
+            let reqFriends = [];
+            for (const friendId of friendIds) {
+                const reqFriend = await User.findById(friendId);
+                if (!reqFriend) {
+                    continue;
+                }
+                const body = {
+                    idReq: reqFriend._id,
+                    name: reqFriend.name,
+                    avatar: reqFriend.avatar,
 
-            return res.status(200).json({ requestedFriends });
+                }
+                reqFriends.push(body)
+            }
+            return res.status(200).json({ reqFriends });
         } catch (error) {
             return res.status(500).json({ message: 'Server error', error });
         }
@@ -232,32 +301,35 @@ const userController = {
             if (!user) {
                 return res.status(404).json({ message: 'User not found' });
             }
-    
-            // Lấy danh sách bạn bè của người dùng
-            const friends = user.friends.filter(friend => friend.status === 'friends');
-    
-            // Lấy danh sách id của các bạn bè
-            const friendIds = friends.map(friend => friend.friendId);
-    
             // Tạo một danh sách gợi ý rỗng
             let suggestedFriends = [];
-    
+            // Lấy danh sách bạn bè của người dùng
+            const friends = user.friends.filter(friend => friend.status === 'friends');
+            const reqFriend = user.friends.filter(friend => friend.status === 'requested');
+            const aptFrined = user.friends.filter(friend => friend.status === 'waitAccept');
+            // Lấy danh sách id của các bạn bè
+            const friendIds = friends.map(friend => friend.friendId);
+            const reqFriendIds = reqFriend.map(friend => friend.friendId);
+            const aptFriendIds = aptFrined.map(friend => friend.friendId);
+
+
             // Lặp qua danh sách bạn bè
             for (const friendId of friendIds) {
-                // Lấy một bạn bè ngẫu nhiên từ danh sách bạn bè
                 const randomFriend = await User.findById(friendId);
                 if (!randomFriend) {
                     continue;
                 }
-    
                 // Lấy danh sách bạn bè của bạn bè ngẫu nhiên
                 const randomFriendFriends = randomFriend.friends.filter(friend => friend.status === 'friends');
                 const randomFriendFriendIds = randomFriendFriends.map(friend => friend.friendId);
-    
                 // Lấy 5 bạn bè ngẫu nhiên từ danh sách bạn bè của bạn bè ngẫu nhiên
                 for (let i = 0; i < Math.min(5, randomFriendFriendIds.length); i++) {
                     const suggestedFriendId = randomFriendFriendIds[i];
-                    if (suggestedFriendId != currentUserId && !friendIds.includes(suggestedFriendId)) {
+                    if (suggestedFriendId != currentUserId
+                        && !friendIds.includes(suggestedFriendId)
+                        && !reqFriendIds.includes(suggestedFriendId)
+                        && !aptFriendIds.includes(suggestedFriendId)
+                    ) {
                         const suggestedFriend = await User.findById(suggestedFriendId);
                         if (suggestedFriend) {
                             suggestedFriends.push(suggestedFriend);
@@ -265,10 +337,37 @@ const userController = {
                     }
                 }
             }
-    
+
             return res.status(200).json({ suggestedFriends });
         } catch (error) {
             return res.status(500).json({ message: 'Server error', error });
+        }
+    },
+    getFriends: async (req, res) => {
+        try {
+            const currentUserId = req.user.id;
+            const user = await User.findById(currentUserId);
+            if (!user) {
+                return res.status(404).json({ message: 'User not found' });
+            }
+            const requestedFriends = user.friends.filter(friend => friend.status === 'friends');
+            const friendIds = requestedFriends.map(friend => friend.friendId);
+            let reqFriends = [];
+            for (const friendId of friendIds) {
+                const reqFriend = await User.findById(friendId);
+                if (!reqFriend) {
+                    continue;
+                }
+                const body = {
+                    idReq: reqFriend._id,
+                    name: reqFriend.name,
+                    avatar: reqFriend.avatar,
+                }
+                reqFriends.push(body);
+            }
+            return res.status(200).json({ reqFriends });
+        } catch (error) {
+
         }
     },
 }

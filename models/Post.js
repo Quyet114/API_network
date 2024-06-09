@@ -6,6 +6,12 @@ const postSchema = new mongoose.Schema({
         minlength: 1,
         maxlength: 200,
     },
+    tags: [{
+        friendId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'User'
+        }
+    }],
     text: {
         type: String,
         maxlength: 200

@@ -4,8 +4,8 @@ const postController = {
     // Create a new post
     async createPost(req, res) {
         try {
-            const { creator, text, images, type } = req.body;
-            const post = new Post({ creator, text, images, type });
+            const { creator, text, images, type,tags } = req.body;
+            const post = new Post({creator, text, images, type,tags });
             await post.save();
             res.status(201).json(post);
         } catch (err) {

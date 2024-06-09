@@ -44,7 +44,7 @@ const authController = {
                     id: user.id,
                     // isAdmin: user.isAdmin,
                 }, secretKey,
-                    { expiresIn: "9990s" }
+                    { expiresIn: "7d" }
                 )
                 const body = {
                     status:1,
@@ -73,6 +73,26 @@ const authController = {
         res.clearCookie("refreshToken");
         res.status(200).json("Logged out successfully!");
     },
+    loginTouch: async (req,res) =>{
+        const { email } = req.body;
+        try {
+            // Find the user by email
+            const user = await User.findOne({ email });
+            if (!user) {
+                return res.status(404).json({ message: 'User not found' });
+            }
+    
+            // Assume Touch ID is always valid if it reaches this point
+            // Generate a token
+            const token = jwt.sign({ userId: user._id }, SECRET_KEY, { expiresIn: '1h' });
+    
+            res.status(200).json({ token, user });
+        } catch (error) {
+            console.error(error);
+            res.status(500).json({ message: 'Server error' });
+        }
+    },
+    
 
 }
 module.exports = authController;
