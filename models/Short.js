@@ -1,13 +1,13 @@
 const mongoose = require('mongoose');
 
-const postSchema = new mongoose.Schema({
+const shortSchema = new mongoose.Schema({
     // người tạo
     creator: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
         required: true
     },
-    title:{
+    title: {
         type: String,
         maxlength: 200,
     },
@@ -21,10 +21,10 @@ const postSchema = new mongoose.Schema({
         type: String,
     }],
     // thể loại 
-    categories: [{
+    categories: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Categories'
-    }],
+    },
     // số lượng người thích
     likes: [{
         type: mongoose.Schema.Types.ObjectId,
@@ -41,16 +41,18 @@ const postSchema = new mongoose.Schema({
         default: 0
     },
     // trạng thái bài: ẩn, hiển thị
-    type:{
-        type:Number,
-        enum: [0,1],
-        default:0
+    type: {
+        type: Number,
+        enum: [0, 1],
+        default: 0
     },
-    comments:
-    [{ type: mongoose.Schema.Types.ObjectId,
-        ref: 'Comment' }]
+    music: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Music'
+    },
+    comments: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Comment' }]
 }, { timestamps: true });
 
-const Post = mongoose.model("Post", postSchema);
+const Short = mongoose.model("Short", shortSchema);
 
-module.exports = { Post };
+module.exports = { Short };

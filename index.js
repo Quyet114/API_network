@@ -7,6 +7,9 @@ const authRoute = require("./router/auth");
 const userRoute = require("./router/user");
 const postRoute = require("./router/post");
 const imageRoute = require("./router/media")
+const shortRoute = require("./router/short")
+const cmtRoute = require("./router/cmt")
+const musicRoute = require("./router/music")
 dotenv.config();
 mongoose.set('strictQuery', true);
 const mongoURI = process.env.MONGODB_URI;
@@ -30,8 +33,13 @@ app.use(express.json());
 // Routes
 app.use("/v1/auth", authRoute);
 app.use("/v1/user", userRoute);
-app.use("/v1/post", postRoute); // Mount the post routes
+app.use("/v1/post", postRoute);
+app.use("/v1/short", shortRoute);
 app.use("/v1/image",imageRoute);
+app.use("/v1/cmt", cmtRoute);
+app.use("/v1/music", musicRoute);
+
+
 app.use((err, req, res, next) => {
     console.error(err.stack);
     res.status(500).json({ message: 'Internal Server Error', error: err.message });

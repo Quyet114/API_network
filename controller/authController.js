@@ -1,98 +1,89 @@
-
-const {User} = require("../models/User");
+const { User } = require("../models/User");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const dotenv = require("dotenv");
 
-
 dotenv.config();
 
 const secretKey = process.env.JWT_ACCESS_KEY;
-
+const avatarUrls = [
+    'https://inkythuatso.com/uploads/thumbnails/800/2022/03/anh-dai-dien-zalo-50-29-15-13-16.jpg',
+    'https://scr.vn/wp-content/uploads/2020/08/Nh%C3%B3c-Maruko-d%E1%BB%85-th%C6%B0%C6%A1ng.jpeg',
+    'https://imgt.taimienphi.vn/cf/Images/tt/2021/8/20/top-anh-dai-dien-dep-chat-48.jpg'
+];
 const authController = {
-    //register
-    registerUser: async (req, res, next) => {
+    // Register a new user
+    registerUser: async (req, res) => {
         try {
-            // const salt = await bcrypt.genSalt(10);
-            // const hashed = await bcrypt.hash(req.body.password, salt);
-            const newUser = await new User({
-                name: req.body.name,
-                email: req.body.email,
-                password: req.body.password,
+            const { name, email, password } = req.body;
+            const salt = await bcrypt.genSalt(10);
+            const hashedPassword = await bcrypt.hash(password, salt);
+            const randomAvatar = avatarUrls[Math.floor(Math.random() * avatarUrls.length)];
+            const newUser = new User({
+                name,
+                email,
+                password: hashedPassword,
+                avatar: randomAvatar
             });
-            const user = await newUser.save();
-            res.status(200).json(user);
-        } catch (error) {
-            res.status(500).json(error);
-        }
-    },
-    loginUser: async (req, res, next) => {
-        try {
-            const user = await User.findOne({ email: req.body.email, password: req.body.password  });
-            if (!user) {
-                res.status(404).json("Wrong username!");
-            }
-            // const validPassword = await bcrypt.compare(
-            //     req.body.password,
-            //     user.password
-            // )
-            if (!user.password) {
-                res.status(404).json("Wrong passord!");
-            }
-            if (user && user.password) {
-                const AccessToken = jwt.sign({
-                    id: user.id,
-                    // isAdmin: user.isAdmin,
-                }, secretKey,
-                    { expiresIn: "7d" }
-                )
-                const body = {
-                    status:1,
-                    notification:"Đăng nhập thành công!",
-                    _id:user._id,
-                    name: user.name,
-                    email:user.email,
-                    about:user.about,
-                    type:user.type,
-                    token:AccessToken,
-                    avatar:user.avatar
-                }
 
-                //dont show password
-                const { password, ...others } = user._doc;
-                res.status(200).json(body);
-            };
+            const user = await newUser.save();
+            res.status(201).json({ message: 'User registered successfully', status: 1, user });
         } catch (error) {
-            res.status(500).json(error);
-            console.log(error);
+            res.status(500).json({ message: error.message, status: -1 });
         }
     },
-    //LOG OUT
-    logOut: async (req, res) => {
-        //Clear cookies when user logs out
-        res.clearCookie("refreshToken");
-        res.status(200).json("Logged out successfully!");
+
+    // Log in a user
+    loginUser: async (req, res) => {
+        try {
+            const { email, password } = req.body;
+            const user = await User.findOne({ email });
+            if (!user || !(await bcrypt.compare(password, user.password))) {
+                return res.status(401).json({ message: 'Invalid email or password', status: -1 });
+            }
+
+            const accessToken = jwt.sign(
+                { id: user._id },
+                secretKey,
+                { expiresIn: "7d" }
+            );
+
+            const { password: userPassword, ...userInfo } = user._doc;
+
+            res.status(200).json({
+                message: 'Login successful',
+                status: 1,
+                body: {
+                    ...userInfo,
+                    token: accessToken
+                }
+            });
+        } catch (error) {
+            res.status(500).json({ message: error.message, status: -1 });
+        }
     },
-    loginTouch: async (req,res) =>{
+
+    // Log out user
+    logOut: async (req, res) => {
+        res.clearCookie("refreshToken");
+        res.status(200).json({ message: 'Logged out successfully', status: 1 });
+    },
+
+    // Log in with biometric data (e.g., email)
+    loginBiometric: async (req, res) => {
         const { email } = req.body;
         try {
-            // Find the user by email
             const user = await User.findOne({ email });
             if (!user) {
-                return res.status(404).json({ message: 'User not found' });
+                return res.status(404).json({ message: 'User not found', status: -1 });
             }
-    
-            // Assume Touch ID is always valid if it reaches this point
-            // Generate a token
-            const token = jwt.sign({ userId: user._id }, SECRET_KEY, { expiresIn: '1h' });
-    
-            res.status(200).json({ token, user });
-        } catch (error) {
-            console.error(error);
-            res.status(500).json({ message: 'Server error' });
-        }
-    },
-    
 
-}
+            const token = jwt.sign({ userId: user._id }, secretKey, { expiresIn: '7d' });
+            res.status(200).json({ message: 'Biometric login successful', status: 1, token, user });
+        } catch (error) {
+            res.status(500).json({ message: 'Server error', status: -1 });
+        }
+    }
+};
+
 module.exports = authController;

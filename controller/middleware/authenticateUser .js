@@ -17,7 +17,7 @@ const authenticateUser = (req, res, next) => {
                 return res.status(403).json({ message: 'Token is not valid' });
             }
             console.log('Authenticated user:', user);
-            req.user = user;
+            req.userId = user.id;
             next();
         });
     } catch (err) {
