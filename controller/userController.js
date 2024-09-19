@@ -1,5 +1,5 @@
 const { User } = require("../models/User");
-const bcrypt = require("bcrypt");
+const bcrypt = require("bcryptjs");
 const authController = require("./authController");
 const mongoose = require('mongoose');
 const userController = {
