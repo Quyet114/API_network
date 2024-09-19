@@ -3,23 +3,25 @@
 const cloudinary = require('cloudinary').v2;
 const { CloudinaryStorage } = require('multer-storage-cloudinary');
 const multer = require('multer');
-
+const cloudname = process.env.CLOUD_NAME;
+const apikey = process.env.API_KEY;
+const apisecret = process.env.API_SECRET;
 cloudinary.config({
-    cloud_name: 'dyjxyz2jc',
-    api_key: '638458188483596',
-    api_secret: 'pjxLRPBCzL1nJU1_NIoQ4rXKlfg'
+    cloud_name: cloudname,
+    api_key: apikey,
+    api_secret: apisecret
 });
 
 const storage = new CloudinaryStorage({
     cloudinary,
     allowedFormats: ['jpg', 'png', 'mp4'],
-    params:{
+    params: {
         folder: "demo1",
         resource_type: 'auto',
         allowed_formats: ['jpg', 'png', 'mp4']
     }
 });
-const uploadCloud = multer({ 
+const uploadCloud = multer({
     storage,
     fileFilter: (req, file, cb) => {
         const filetypes = /jpeg|jpg|png|mp4/;
