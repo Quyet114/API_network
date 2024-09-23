@@ -49,7 +49,7 @@ const shortSchema = new mongoose.Schema({
     music: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Music',
-        default: ''
+        default: null
     },
     comments: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Comment' }]
 }, { timestamps: true });

@@ -14,7 +14,7 @@ const shortController = {
                 images: images || [],
                 categories: categories || 0,
                 type: type || 0,
-                music:music || '',
+                ...(music && { music })
             });
             await short.save();
             res.status(201).json({ message: 'successfully', status: 1, short });
