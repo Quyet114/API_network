@@ -17,6 +17,13 @@ const shortController = {
                 ...(music && { music })
             });
             await short.save();
+            const user = await User.findById(creator);
+            if (!user) {
+                return res.status(404).json({ message: 'User not found', status: -1 });
+            }
+            // Add the post to user's userPost array
+            user.userShort.push(short._id);
+            await user.save();
             res.status(201).json({ message: 'successfully', status: 1, short });
         } catch (err) {
             res.status(400).json({ message: err.message, status: -1 });
