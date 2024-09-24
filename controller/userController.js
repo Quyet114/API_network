@@ -203,7 +203,12 @@ const userController = {
                     {
                         path: 'categories',
                         model: 'Categories'
-                    }]
+                    },
+                    {
+                        path: 'music',
+                        model: 'Music'
+                    }
+                    ]
                 });
 
             if (!user) {
