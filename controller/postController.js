@@ -395,7 +395,6 @@ const postController = {
                     { text: { $regex: keyword, $options: 'i' } }
                 ]
             })
-            .select('title text') 
             .populate('creator', 'name avatar')
             .populate('categories', 'name');
 
