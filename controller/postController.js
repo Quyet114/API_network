@@ -390,9 +390,14 @@ const postController = {
                 return res.status(400).json({ message: 'Keyword is required for searching users' });
             }
             const users = await Post.find({
-                title: { $regex: keyword, $options: 'i' }
-            }).populate('creator', 'name avatar')
-                .populate('categories', 'name');
+                $or: [
+                    { title: { $regex: keyword, $options: 'i' } },
+                    { text: { $regex: keyword, $options: 'i' } }
+                ]
+            })
+            .select('title text') 
+            .populate('creator', 'name avatar')
+            .populate('categories', 'name');
 
             ;
             if (users.length > 0) {
@@ -406,9 +411,6 @@ const postController = {
             return res.status(500).json({ message: 'An error occurred while searching for users', error: error.message });
         }
     }
-
-
-
 };
 
 module.exports = postController;
